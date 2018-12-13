@@ -1,0 +1,104 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project name="DDevApi" default="all" basedir=".">
+
+	<property environment="env" />
+
+	<property name="basepath" value="." />
+	<property name="argJavacCompileArgs" value="" />
+	<!--property name="Configuration" value="${env.BUILD_CONFIGURATION}" /-->
+	<property name="Configuration" value="Release" />
+	<property name="Platform" value="${env.BUILD_PLATFORM}" />
+	<property name="toolsDir" value="${basepath}\..\..\..\API\Tools" />
+	<property name="Hello Text" value="Hello" />
+	<property name="jarName" value="pagescansample.jar" />
+	<property name="jarDir" value="${basepath}" />
+	<property name="srcDir" value="${basepath}/src" />
+	<property name="binDir" value="${basepath}/bin" />
+	<property name="nativeDllName" value="PageScanAPI.dll" />
+	<property name="nativeBuildDirx86" value="${basepath}\..\..\..\API\PageScanAPI\bin\Win32\${Configuration}" />
+	<property name="nativeBuildDirx64" value="${basepath}\..\..\..\API\PageScanAPI\bin\x64\${Configuration}" />
+	<property name="nativeDllPathx86" value="${nativeBuildDirx86}\${nativeDllName}" />
+	<property name="nativeDllPathx64" value="${nativeBuildDirx86}\${nativeDllName}" />
+
+	<echo message="# Using Java version ${ant.java.version}" />
+	<echo message="# Passed JavaCompilerArgs=${argJavacCompileArgs}" />
+	<echo message="# Using the following build settings:  ${Platform}/${Configuration}" />
+	<echo message="# Using the following tool dir:  ${toolsDir}" />
+
+
+	<target name="init">
+		<tstamp>
+			<format property="TODAY_ISO" pattern="yyyy-MM-dd HH:mm:ss" locale="en,UK" />
+		</tstamp>
+    </target>
+	<target name="prebuild">
+		
+		<!-- Read DLL version from x86 DLL and write to properties file -->
+		<echo message="# Print native x64 DLL version:  excec ${toolsDir}\PrintFileVersion.exe ${nativeDllPathx86}" />
+		<exec executable="${toolsDir}\PrintFileVersion.exe" outputproperty="version">
+			<arg value="${nativeDllPathx86}" />
+		</exec>
+
+		<!-- Read DLL version from x64 DLL and compare with ${version}  -->
+		<echo message="# Print native x64 DLL version:  excec ${toolsDir}/PrintFileVersion.exe ${nativeDllPathx64}" />
+		<exec executable="${toolsDir}/PrintFileVersion.exe" outputproperty="versionx64">
+			<arg value="${nativeDllPathx64}" />
+		</exec>
+
+		<!-- Cancel build if versions are not equal -->
+		<fail message="Error! x86 and x64 file versions are not equal (Win32: ${version} / x64: ${versionx64} )">
+			<condition>
+				<not>
+					<equals arg1="${version}" arg2="${versionx64}" />
+				</not>
+			</condition>
+		</fail>
+	</target>
+
+	<target name="clean" depends="init">
+		<delete dir="${binDir}" />
+	</target>
+
+	<target name="cleanall" depends="clean">
+		<delete file="${jarDir}/${jarName}" failonerror="no" />
+	</target>
+
+	
+
+	<target name="compile" depends="prebuild">
+		<mkdir dir="${binDir}" />
+		<javac srcdir="${srcDir}" destdir="${binDir}" includeantruntime="yes" debug="yes">
+			<classpath>
+				<pathelement path="platform.jar" />
+				<pathelement path="jna.jar" />
+				<pathelement path="pagescan.jar" />
+				<!--fileset dir="${srcDir}">
+					<include name="**/*.jar" />
+				</fileset-->
+			</classpath>
+			<compilerarg line="${argJavacCompileArgs}" />
+		</javac>
+	</target>
+
+	<target name="jar" depends="compile">
+		<mkdir dir="${jarDir}" />
+		<jar destfile="${jarDir}/${jarName}">
+			<fileset dir="${srcDir}" />
+		</jar>
+		<jar destfile="${jarDir}/${jarName}" update="true" basedir="bin">
+			<manifest>
+				<section name="common">
+					<attribute name="Library-Title" value="DESKO PageScan API Sample for JAVA" />
+					<attribute name="Library-Version" value="${version}" />
+					<attribute name="Library-Vendor" value="DESKO GmbH" />
+					<attribute name="Native-Version" value="${version}" />
+					<attribute name="Implementation-Title" value="common" />
+					<attribute name="Implementation-Version" value="${version} ${TODAY_ISO}" />
+					<attribute name="Implementation-Vendor" value="DESKO GmbH" />
+				</section>
+			</manifest>
+		</jar>
+	</target>
+
+	<target name="all" depends="jar" />
+</project>
